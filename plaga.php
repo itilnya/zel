@@ -1,4 +1,25 @@
 <?php
+session_start();
+$pw = "plaga";
+
+if (!isset($_SESSION['plaga_auth'])) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
+        if ($_POST['password'] === $pw) {
+            $_SESSION['plaga_auth'] = true;
+            header("Location: ?");
+            exit;
+        }
+        die("Password salah bego");
+    }
+    ?>
+    <form method="post">
+        <input type="password" name="password" placeholder="Masukin">
+        <button type="submit">aw</button>
+    </form>
+    <?php
+    exit;
+}
+
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
 
