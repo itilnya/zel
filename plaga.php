@@ -4,7 +4,7 @@ session_set_cookie_params(86400);
 
 session_start();
 
-$pw = "plaga";
+$hashed_password = '$2b$12$tpumex1eLs.8Jr44/UH2geFuQBPddqW8PA.zaPkB7RgjPhnldk036';
 
 if (isset($_GET['logout'])) {
     session_unset();
@@ -15,13 +15,21 @@ if (isset($_GET['logout'])) {
 
 if (!isset($_SESSION['plaga_auth'])) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
-        if ($_POST['password'] === $pw) {
+        if (password_verify($_POST['password'], $hashed_password)) {
             $_SESSION['plaga_auth'] = true;
             header("Location: ?");
             exit;
         }
         die("Password salah bego");
     }
+    ?>
+    <form method="post">
+        <input type="password" name="password" placeholder="Password">
+        <button type="submit">Login</button>
+    </form>
+    <?php
+    exit;
+}
     ?>
     <form method="post">
         <input type="password" name="password" placeholder="Password">
